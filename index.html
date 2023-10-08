@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.5.1/axios.min.js" integrity="sha512-emSwuKiMyYedRwflbZB2ghzX8Cw8fmNVgZ6yQNNXXagFzFOaQmbvQ1vmDkddHjm5AITcBIZfC7k4ShQSjgPAmQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+</head>
+<body>
+
+
+    <div class="container-fluid">
+
+        <h1 class="row">Login</h1>
+
+        <main>
+            <div class="row">
+                <label for="username">Username</label>
+                <input type="text" name="username" id="username">
+            </div>
+
+            <div class="row">
+                <Label for="password">password</Label>
+                <input type="password" name="password" id="password">
+            </div>
+            
+            <div>
+                <button onclick="login()">Login</button>
+                <!-- <button onclick="getDashboard()">Get Dashboard</button>
+                <button onclick="getSettings()">Settings</button> -->
+
+                <button onclick="navigateTo('/dashboard')">Get Dashboard</button>
+                <button onclick="navigateTo('/settings')">Settings</button>
+            </div>
+        </main>
+    </div>
+    <script>
+
+
+        function login()
+        {
+            const data={
+                username:document.getElementById('username').value,
+                password:document.getElementById('password').value,
+            };
+            axios.post('/api/login',data)
+                .then(res =>{
+                    console.log(res);
+                    if(res && res.data && res.data.success)
+                    {
+                        const token=res.data.token;
+                        localStorage.setItem('jwt',token);
+                        getDashboard();
+                    }
+            });
+        }
+
+
+        function getDashboard()
+        {
+            const token=localStorage.getItem('jwt');
+            axios.get('/api/dashboard',{
+                headers:{
+                    Authorization: `Bearer ${token}`
+                }
+            }).then(res=>{
+                if(res && res.data && res.data.success){
+                    document.querySelector('h1.row').innerHTML='Dashboard';
+                    document.querySelector('main').innerHTML=res.data.myContent;
+                }
+            });
+        }
+
+        //Setting Function
+        function getSettings()
+        {
+            const token=localStorage.getItem('jwt');
+            axios.get('/api/settings',{
+                headers:{
+                    Authorization: `Bearer ${token}`
+                }
+            }).then(res=>{
+                if(res && res.data && res.data.success){
+                    document.querySelector('h1.row').innerHTML='This is the setting Page';
+                    document.querySelector('main').innerHTML=res.data.myContent;
+                }
+            });
+        }
+
+        // Function to change the route and update the URL
+        function navigateTo(route) {
+            // Update the URL without a page reload
+            history.pushState(null, null, route);
+
+            // Update the content based on the route (you can use a router library for more complex routing)
+            if (route === '/dashboard') {
+                getDashboard();
+            } else if (route === '/settings') {
+                getSettings();
+            }
+        }
+
+        // Initialize the content based on the initial URL when the page loads
+        window.addEventListener('load', function() {
+            const currentPath = window.location.pathname;
+            if (currentPath === '/dashboard') {
+                getDashboard();
+            } else if (currentPath === '/settings') {
+                getSettings();
+            } else {
+                login();
+            }
+        });
+
+        window.addEventListener('popstate', function(event) {
+            const currentPath = window.location.pathname;
+            if (currentPath === '/dashboard') {
+                getDashboard();
+            } else if (currentPath === '/settings') {
+                getSettings();
+            } else {
+                login();
+            }
+        });
+
+        // decoding jwt function
+        function jwt_decode(token) {
+            const base64Url = token.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(
+              atob(base64)
+                .split('')
+                .map(function (c) {
+                  return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                })
+                .join('')
+            );
+          
+            return JSON.parse(jsonPayload);
+          }
+        
+
+        function isTokenExpired(token) 
+        {
+            const decodedToken = jwt_decode(token);
+            const currentTimestamp = Math.floor(Date.now() / 1000); 
+
+            return decodedToken.exp < currentTimestamp;
+        }
+
+        function reloadPage() {
+            window.location.href = '/';
+        }
+
+        window.addEventListener('load', () => 
+        {
+            const storedToken = localStorage.getItem('jwt'); 
+        
+            if (storedToken && isTokenExpired(storedToken)) 
+            {
+                setTimeout(reloadPage, 180000); 
+            } 
+        });
+
+    </script>     
+</body>
+</html>
